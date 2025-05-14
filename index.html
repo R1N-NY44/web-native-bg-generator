@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Interactive Glow Editor</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      background-color: #000;
+      overflow: hidden;
+      font-family: 'Segoe UI', sans-serif;
+    }
+
+    body::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: url("https://grainy-gradients.vercel.app/noise.svg");
+      opacity: 0.15;
+      filter: contrast(400%) brightness(9000%);
+      z-index: 1;
+      pointer-events: none;
+    }
+
+    .glow-shape {
+      position: absolute;
+      border-radius: 35% 65% 65% 35% / 35% 35% 65% 65%;
+      filter: blur(80px);
+      z-index: 0;
+      transform: rotate(15deg);
+      pointer-events: none;
+    }
+
+    .settings-button {
+      position: fixed;
+      top: 10px;
+      right: 10px;
+      background: rgba(255,255,255,0.05);
+      color: white;
+      border: none;
+      padding: 10px 15px;
+      border-radius: 8px;
+      z-index: 10;
+      cursor: pointer;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+
+    body:hover .settings-button {
+      opacity: 1;
+    }
+
+    .modal {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: #111;
+      color: white;
+      border: 1px solid #333;
+      border-radius: 10px;
+      padding: 20px;
+      z-index: 100;
+      display: none;
+      max-height: 90%;
+      overflow-y: auto;
+    }
+
+    .modal h2 {
+      margin-top: 0;
+    }
+
+    .glow-controls {
+      margin-bottom: 20px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid #444;
+    }
+
+    .glow-controls label {
+      display: block;
+      margin: 5px 0 2px;
+    }
+
+    .glow-controls input[type="range"] {
+      width: 100%;
+    }
+
+    .glow-controls input[type="color"],
+    .glow-controls input[type="text"] {
+      width: 100%;
+    }
+
+    .glow-controls button {
+      margin-top: 5px;
+      background: #300;
+      color: white;
+      border: none;
+      padding: 4px 8px;
+      cursor: pointer;
+    }
+
+    .modal button {
+      background: #222;
+      color: white;
+      border: none;
+      margin: 10px 5px 0 0;
+      padding: 8px 12px;
+      cursor: pointer;
+      border-radius: 5px;
+    }
+  </style>
+</head>
+<body>
+  <button class="settings-button" onclick="toggleModal()">⚙ Settings</button>
+
+  <div class="modal" id="modal">
+    <h2>Glow Settings</h2>
+    <div id="glow-controls"></div>
+    <button onclick="addGlow()">➕ Add Glow</button>
+    <button onclick="randomizeGlows()">🔀 Randomize</button>
+    <button onclick="toggleModal()">✖ Close</button>
+  </div>
+
+  <script>
+    const glowContainer = document.body;
+    const controlPanel = document.getElementById('glow-controls');
+    const modal = document.getElementById('modal');
+
+    let glows = [];
+
+    function createGlow(options = {}) {
+      const div = document.createElement('div');
+      div.className = 'glow-shape';
+      const glow = {
+        el: div,
+        top: options.top ?? Math.random() * 100,
+        left: options.left ?? Math.random() * 100,
+        width: options.width ?? (200 + Math.random() * 150),
+        height: options.height ?? (150 + Math.random() * 100),
+        color: options.color ?? randomHSL(),
+        opacity: options.opacity ?? 0.18,
+        radius: options.radius ?? '35% 65% 65% 35% / 35% 35% 65% 65%'
+      };
+      updateGlowStyle(glow);
+      glowContainer.appendChild(div);
+      glows.push(glow);
+      renderControls();
+    }
+
+    function updateGlowStyle(glow) {
+      const { el, top, left, width, height, color, opacity, radius } = glow;
+      el.style.top = top + '%';
+      el.style.left = left + '%';
+      el.style.width = width + 'px';
+      el.style.height = height + 'px';
+      el.style.background = color;
+      el.style.opacity = opacity;
+      el.style.borderRadius = radius;
+    }
+
+    function renderControls() {
+      controlPanel.innerHTML = '';
+      glows.forEach((glow, i) => {
+        const div = document.createElement('div');
+        div.className = 'glow-controls';
+        div.innerHTML = `
+          <h4>Glow ${i + 1}</h4>
+          <label>Top: <input type="range" min="0" max="100" step="1" value="${glow.top}" onchange="updateValue(${i}, 'top', this.value)"></label>
+          <label>Left: <input type="range" min="0" max="100" step="1" value="${glow.left}" onchange="updateValue(${i}, 'left', this.value)"></label>
+          <label>Width: <input type="range" min="100" max="500" value="${glow.width}" onchange="updateValue(${i}, 'width', this.value)"></label>
+          <label>Height: <input type="range" min="100" max="500" value="${glow.height}" onchange="updateValue(${i}, 'height', this.value)"></label>
+          <label>Opacity: <input type="range" min="0" max="1" step="0.01" value="${glow.opacity}" onchange="updateValue(${i}, 'opacity', this.value)"></label>
+          <label>Color: <input type="color" value="${hslToHex(glow.color)}" onchange="updateColor(${i}, this.value)"></label>
+          <label>Border Radius: <input type="text" value="${glow.radius}" onchange="updateValue(${i}, 'radius', this.value)"></label>
+          <button onclick="removeGlow(${i})">❌ Remove</button>
+        `;
+        controlPanel.appendChild(div);
+      });
+    }
+
+    function updateValue(index, key, value) {
+      glows[index][key] = key === 'width' || key === 'height' || key === 'top' || key === 'left' ? parseFloat(value) : value;
+      updateGlowStyle(glows[index]);
+    }
+
+    function updateColor(index, value) {
+      glows[index].color = value;
+      updateGlowStyle(glows[index]);
+    }
+
+    function removeGlow(index) {
+      glowContainer.removeChild(glows[index].el);
+      glows.splice(index, 1);
+      renderControls();
+    }
+
+    function addGlow() {
+      createGlow();
+    }
+
+    function toggleModal() {
+      modal.style.display = modal.style.display === 'none' || modal.style.display === '' ? 'block' : 'none';
+    }
+
+    function randomizeGlows() {
+      glows.forEach(glow => {
+        glow.top = Math.random() * 100;
+        glow.left = Math.random() * 100;
+        glow.width = 200 + Math.random() * 150;
+        glow.height = 150 + Math.random() * 100;
+        glow.color = randomHSL();
+        glow.opacity = 0.18;
+        updateGlowStyle(glow);
+      });
+      renderControls();
+    }
+
+    function randomHSL() {
+      return `hsl(${Math.floor(Math.random() * 360)}, 100%, 70%)`;
+    }
+
+    function hslToHex(hsl) {
+      const [h, s, l] = hsl.match(/\d+/g).map(Number);
+      const a = s * Math.min(l, 100 - l) / 10000;
+      const f = n => {
+        const k = (n + h / 30) % 12;
+        const color = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
+        return Math.round(255 * color / 100).toString(16).padStart(2, '0');
+      };
+      return `#${f(0)}${f(8)}${f(4)}`;
+    }
+
+    // Initial random glows
+    const initialCount = Math.floor(Math.random() * 3) + 1;
+    for (let i = 0; i < initialCount; i++) createGlow();
+  </script>
+</body>
+</html>

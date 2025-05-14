@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Custom Glow Editor</title>
+  <style>
+    :root {
+      --glow-color: hsl(200, 100%, 70%);
+      --grain-opacity: 0.15;
+      --grain-contrast: 400%;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      background-color: #000;
+      overflow: hidden;
+      font-family: 'Segoe UI', sans-serif;
+    }
+
+    body::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: url("https://grainy-gradients.vercel.app/noise.svg");
+      opacity: var(--grain-opacity);
+      filter: contrast(var(--grain-contrast)) brightness(9000%);
+      z-index: 1;
+      pointer-events: none;
+    }
+
+    .glow-shape {
+      position: absolute;
+      background: var(--glow-color);
+      opacity: 0.2;
+      border-radius: 35%;
+      filter: blur(80px);
+      z-index: 0;
+    }
+
+    #settings-toggle {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      z-index: 3;
+      background: rgba(255,255,255,0.05);
+      border: none;
+      color: #fff;
+      padding: 6px 12px;
+      cursor: pointer;
+      border-radius: 8px;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+
+    body:hover #settings-toggle {
+      opacity: 1;
+    }
+
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      /* background: rgba(0,0,0,0.6); */
+      z-index: 10;
+      display: none;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal {
+      /* background: #111; */
+      padding: 20px;
+      max-height: 80vh;
+      overflow-y: auto;
+      border-radius: 10px;
+      color: white;
+      min-width: 350px;
+    }
+
+    .glow-controls {
+      border: 1px solid #333;
+      padding: 10px;
+      margin-bottom: 10px;
+      border-radius: 8px;
+    }
+
+    .control-group {
+      margin-bottom: 6px;
+    }
+
+    input[type="range"] {
+      width: 100%;
+    }
+
+    label {
+      font-size: 0.8rem;
+      display: block;
+    }
+
+    .btn {
+      background: #333;
+      color: #fff;
+      border: none;
+      padding: 6px 10px;
+      cursor: pointer;
+      margin-top: 5px;
+      border-radius: 6px;
+    }
+  </style>
+</head>
+<body>
+  <button id="settings-toggle">⚙ Settings</button>
+
+  <div class="modal-overlay" id="modal-overlay">
+    <div class="modal" id="settings-modal">
+      <div>
+        <h3>Glow Settings</h3>
+        <button class="btn" id="add-glow">➕ Add Glow</button>
+        <button class="btn" id="randomize-glows">🔁 Randomize</button>
+      </div>
+      <hr style="margin:10px 0;">
+      <div class="control-group">
+        <label>Grain Opacity</label>
+        <input type="range" id="grain-opacity" min="0.01" max="1" step="0.01" value="0.15">
+      </div>
+      <div class="control-group">
+        <label>Grain Contrast</label>
+        <input type="range" id="grain-contrast" min="100" max="1000" step="50" value="400">
+      </div>
+      <div id="glow-settings"></div>
+    </div>
+  </div>
+
+  <script>
+    const glows = [];
+    const glowSettingsContainer = document.getElementById('glow-settings');
+    const root = document.documentElement;
+
+    function createGlow(data = {}) {
+      const div = document.createElement('div');
+      div.classList.add('glow-shape');
+
+      const glow = {
+        el: div,
+        top: data.top ?? Math.random() * 100,
+        left: data.left ?? Math.random() * 100,
+        width: data.width ?? (200 + Math.random() * 100),
+        height: data.height ?? (150 + Math.random() * 100),
+        opacity: data.opacity ?? 0.2,
+        radius: data.radius ?? 35,
+        color: data.color ?? root.style.getPropertyValue('--glow-color')
+      };
+
+      updateGlowStyle(glow);
+      document.body.appendChild(div);
+      glows.push(glow);
+      updateSettingsPanel();
+    }
+
+    function updateGlowStyle(glow) {
+      glow.el.style.top = `${glow.top}%`;
+      glow.el.style.left = `${glow.left}%`;
+      glow.el.style.width = `${glow.width}px`;
+      glow.el.style.height = `${glow.height}px`;
+      glow.el.style.opacity = glow.opacity;
+      glow.el.style.borderRadius = `${glow.radius}%`;
+      glow.el.style.background = glow.color;
+    }
+
+    function updateSettingsPanel() {
+      glowSettingsContainer.innerHTML = '';
+      glows.forEach((glow, index) => {
+        const container = document.createElement('div');
+        container.className = 'glow-controls';
+
+        container.innerHTML = `
+          <strong>Glow ${index + 1}</strong>
+          <div class="control-group">
+            <label>Top (%)</label>
+            <input type="range" min="0" max="100" value="${glow.top}" data-index="${index}" data-key="top">
+          </div>
+          <div class="control-group">
+            <label>Left (%)</label>
+            <input type="range" min="0" max="100" value="${glow.left}" data-index="${index}" data-key="left">
+          </div>
+          <div class="control-group">
+            <label>Width (px)</label>
+            <input type="range" min="50" max="400" value="${glow.width}" data-index="${index}" data-key="width">
+          </div>
+          <div class="control-group">
+            <label>Height (px)</label>
+            <input type="range" min="50" max="300" value="${glow.height}" data-index="${index}" data-key="height">
+          </div>
+          <div class="control-group">
+            <label>Border Radius (%)</label>
+            <input type="range" min="0" max="100" value="${glow.radius}" data-index="${index}" data-key="radius">
+          </div>
+          <div class="control-group">
+            <label>Opacity</label>
+            <input type="range" min="0.01" max="1" step="0.01" value="${glow.opacity}" data-index="${index}" data-key="opacity">
+          </div>
+          <div class="control-group">
+            <label>Color</label>
+            <input type="color" value="${glow.color}" data-index="${index}" data-key="color">
+          </div>
+          <button class="btn" onclick="removeGlow(${index})">❌ Remove</button>
+        `;
+        glowSettingsContainer.appendChild(container);
+      });
+
+      glowSettingsContainer.querySelectorAll('input').forEach(input => {
+        input.addEventListener('input', (e) => {
+          const index = parseInt(e.target.dataset.index);
+          const key = e.target.dataset.key;
+          glows[index][key] = key === 'color' ? e.target.value : parseFloat(e.target.value);
+          updateGlowStyle(glows[index]);
+        });
+      });
+    }
+
+    function removeGlow(index) {
+      document.body.removeChild(glows[index].el);
+      glows.splice(index, 1);
+      updateSettingsPanel();
+    }
+
+    function randomizeGlows() {
+      glows.forEach(glow => {
+        glow.top = Math.random() * 100;
+        glow.left = Math.random() * 100;
+        glow.width = 200 + Math.random() * 100;
+        glow.height = 150 + Math.random() * 100;
+        glow.opacity = 0.2;
+        glow.radius = 35;
+        updateGlowStyle(glow);
+      });
+      updateSettingsPanel();
+    }
+
+    // Initial load
+    const initialCount = Math.floor(Math.random() * 3) + 1;
+    for (let i = 0; i < initialCount; i++) createGlow();
+
+    // Button handlers
+    document.getElementById('add-glow').onclick = () => createGlow();
+    document.getElementById('randomize-glows').onclick = () => randomizeGlows();
+
+    // Grain sliders
+    document.getElementById('grain-opacity').addEventListener('input', e => {
+      root.style.setProperty('--grain-opacity', e.target.value);
+    });
+    document.getElementById('grain-contrast').addEventListener('input', e => {
+      root.style.setProperty('--grain-contrast', `${e.target.value}%`);
+    });
+
+    // Modal behavior
+    const modalOverlay = document.getElementById('modal-overlay');
+    document.getElementById('settings-toggle').onclick = () => {
+      modalOverlay.style.display = 'flex';
+    };
+
+    modalOverlay.addEventListener('click', (e) => {
+      if (e.target === modalOverlay) {
+        modalOverlay.style.display = 'none';
+      }
+    });
+  </script>
+</body>
+</html>

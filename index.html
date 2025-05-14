@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Elegant Random Glow</title>
+  <style>
+    :root {
+      --glow-hue: calc(360 * var(--random));
+      --glow-color: hsl(var(--glow-hue), 100%, 70%);
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      background-color: #000;
+      overflow: hidden;
+      font-family: 'Segoe UI', sans-serif;
+    }
+
+    body::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: url("https://grainy-gradients.vercel.app/noise.svg");
+      opacity: 0.15;
+      filter: contrast(400%) brightness(9000%);
+      z-index: 1;
+      pointer-events: none;
+    }
+
+    .glow-shape {
+      position: absolute;
+      background: var(--glow-color);
+      opacity: 0.18;
+      border-radius: 35% 65% 65% 35% / 35% 35% 65% 65%;
+      filter: blur(80px);
+      z-index: 0;
+      transform: rotate(15deg);
+    }
+
+    #settingsBtn {
+      position: fixed;
+      top: 10px;
+      right: 10px;
+      padding: 8px 12px;
+      font-size: 14px;
+      background: rgba(255, 255, 255, 0.1);
+      border: none;
+      color: white;
+      border-radius: 6px;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+      z-index: 10;
+      cursor: pointer;
+    }
+
+    body:hover #settingsBtn {
+      opacity: 1;
+    }
+
+    #modal {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) scale(0.9);
+      background: #111;
+      color: white;
+      padding: 20px;
+      border-radius: 12px;
+      border: 1px solid #444;
+      display: none;
+      z-index: 20;
+      box-shadow: 0 0 20px rgba(255, 255, 255, 0.05);
+      min-width: 260px;
+    }
+
+    #modal label {
+      display: block;
+      margin-top: 10px;
+      font-size: 14px;
+    }
+
+    #modal input[type="number"],
+    #modal input[type="color"] {
+      width: 100%;
+      padding: 6px;
+      border-radius: 6px;
+      border: 1px solid #333;
+      background: #222;
+      color: white;
+      margin-top: 4px;
+    }
+
+    #modal button {
+      margin-top: 12px;
+      padding: 8px 10px;
+      background: #333;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    #overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.4);
+      display: none;
+      z-index: 15;
+    }
+  </style>
+</head>
+<body>
+
+<button id="settingsBtn">⚙️ Settings</button>
+
+<div id="overlay"></div>
+<div id="modal">
+  <label>Jumlah Glow:
+    <input type="number" id="glowCount" min="1" max="10" value="3" />
+  </label>
+
+  <label>Warna Glow:
+    <input type="color" id="glowColor" value="#ff00ff" />
+  </label>
+
+  <label>Posisi Glow (X%, Y%):
+    <input type="number" id="posX" min="0" max="100" value="50" />
+    <input type="number" id="posY" min="0" max="100" value="50" />
+  </label>
+
+  <button id="applyBtn">Terapkan</button>
+  <button id="randomizeBtn">Randomize</button>
+</div>
+
+<script>
+  const overlay = document.getElementById("overlay");
+  const modal = document.getElementById("modal");
+  const settingsBtn = document.getElementById("settingsBtn");
+  const applyBtn = document.getElementById("applyBtn");
+  const randomizeBtn = document.getElementById("randomizeBtn");
+  const glowCountInput = document.getElementById("glowCount");
+  const glowColorInput = document.getElementById("glowColor");
+  const posXInput = document.getElementById("posX");
+  const posYInput = document.getElementById("posY");
+
+  let currentColor = "";
+
+  function createGlow(count = 3, color = null, x = null, y = null) {
+    document.querySelectorAll(".glow-shape").forEach(e => e.remove());
+
+    const useColor = color || `hsl(${Math.floor(Math.random() * 360)}, 100%, 70%)`;
+    currentColor = useColor;
+
+    document.documentElement.style.setProperty("--glow-color", useColor);
+
+    for (let i = 0; i < count; i++) {
+      const div = document.createElement("div");
+      div.classList.add("glow-shape");
+
+      const width = 200 + Math.random() * 150;
+      const height = 150 + Math.random() * 100;
+
+      const top = y !== null ? y : Math.random() * 100;
+      const left = x !== null ? x : Math.random() * 100;
+
+      div.style.width = `${width}px`;
+      div.style.height = `${height}px`;
+      div.style.top = `${top}%`;
+      div.style.left = `${left}%`;
+      div.style.background = useColor;
+
+      document.body.appendChild(div);
+    }
+  }
+
+  function randomizeAll() {
+    document.documentElement.style.setProperty('--random', Math.random());
+    createGlow(Math.floor(Math.random() * 3) + 1);
+  }
+
+  settingsBtn.addEventListener("click", () => {
+    overlay.style.display = "block";
+    modal.style.display = "block";
+  });
+
+  overlay.addEventListener("click", () => {
+    overlay.style.display = "none";
+    modal.style.display = "none";
+  });
+
+  applyBtn.addEventListener("click", () => {
+    const count = parseInt(glowCountInput.value);
+    const color = glowColorInput.value;
+    const x = parseInt(posXInput.value);
+    const y = parseInt(posYInput.value);
+    createGlow(count, color, x, y);
+    overlay.style.display = "none";
+    modal.style.display = "none";
+  });
+
+  randomizeBtn.addEventListener("click", () => {
+    randomizeAll();
+    overlay.style.display = "none";
+    modal.style.display = "none";
+  });
+
+  // Inisialisasi awal
+  randomizeAll();
+</script>
+
+</body>
+</html>
